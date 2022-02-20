@@ -285,7 +285,7 @@ class Predictor(nn.Module):
         return compound_mask, protein_mask
 
 
-    def forward(self, compound, adj,  protein,atom_num,protein_num):
+    def forward(self, compound, adj, protein, atom_num, protein_num):
         # compound = [batch,atom_num, atom_dim]
         # adj = [batch,atom_num, atom_num]
         # protein = [batch,protein len, 100]
@@ -406,12 +406,14 @@ class Trainer(object):
         for data in dataset:
             i = i+1
             atom, adj, protein, label = data
+            #print(f'Processing protein of shape: {protein.shape}')
             adjs.append(adj)
             atoms.append(atom)
             proteins.append(protein)
             labels.append(label)
             if i % 8 == 0 or i == N:
                 data_pack = pack(atoms, adjs, proteins, labels, device)
+                print(f'Proteins in data pack have shape: {data_pack[2].shape}')
                 loss = self.model(data_pack)
                 # loss = loss / self.batch
                 loss.backward()

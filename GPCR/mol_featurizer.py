@@ -7,7 +7,9 @@
 """
 import numpy as np
 from rdkit import Chem
+from tqdm import tqdm
 from rdkit.Chem import Descriptors
+import warnings
 
 num_atom_feat = 34
 def one_of_k_encoding(x, allowable_set):
@@ -88,25 +90,28 @@ if __name__ == "__main__":
     """Exclude data contains '.' in the SMILES format."""
     data_list = [d for d in data_list if '.' not in d.strip().split()[0]]
     N = len(data_list)
+    #warnings.filterwarnings('error', category=np.VisibleDeprecationWarning)
 
     compounds, adjacencies,proteins,interactions = [], [], [], []
     model = Word2Vec.load("word2vec_30.model")
-    for no, data in enumerate(data_list):
-        print('/'.join(map(str, [no + 1, N])))
-        smiles, sequence, interaction = data.strip().split(" ")
+    with tqdm(total=N) as pbar:
+        for no, data in enumerate(data_list):
+            #print('/'.join(map(str, [no + 1, N])))
+            smiles, sequence, interaction = data.strip().split(" ")
 
-        atom_feature, adj = mol_features(smiles)
-        compounds.append(atom_feature)
-        adjacencies.append(adj)
+            atom_feature, adj = mol_features(smiles)
+            compounds.append(atom_feature)
+            adjacencies.append(adj)
 
-        interactions.append(np.array([float(interaction)]))
+            interactions.append(np.array([float(interaction)]))
 
-        protein_embedding = get_protein_embedding(model, seq_to_kmers(sequence))
-        proteins.append(protein_embedding)
+            protein_embedding = get_protein_embedding(model, seq_to_kmers(sequence))
+            proteins.append(protein_embedding)
+            pbar.update(1)
     dir_input = ('dataset/' + DATASET + '/word2vec_30/')
     os.makedirs(dir_input, exist_ok=True)
-    np.save(dir_input + 'compounds', compounds)
-    np.save(dir_input + 'adjacencies', adjacencies)
-    np.save(dir_input + 'proteins', proteins)
-    np.save(dir_input + 'interactions', interactions)
+    np.save(dir_input + 'compounds', compounds, allow_pickle=True)
+    np.save(dir_input + 'adjacencies', adjacencies, allow_pickle=True)
+    np.save(dir_input + 'proteins', proteins, allow_pickle=True)
+    np.save(dir_input + 'interactions', interactions, allow_pickle=True)
     print('The preprocess of ' + DATASET + ' dataset has finished!')

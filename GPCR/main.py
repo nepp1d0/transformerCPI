@@ -12,10 +12,12 @@ import os
 import time
 from model import *
 import timeit
+import warnings
+
 
 
 def load_tensor(file_name, dtype):
-    return [dtype(d).to(device) for d in np.load(file_name + '.npy')]
+    return [dtype(d).to(device) for d in np.load(file_name + '.npy', allow_pickle=True)]
 
 
 def shuffle_dataset(dataset, seed):
@@ -81,9 +83,16 @@ if __name__ == "__main__":
     tester = Tester(model)
 
     """Output files."""
-    file_AUCs = 'output/result/AUCs--lr=1e-4,dropout=0.1,weight_decay=1e-4,kernel=7,n_layer=3,batch=64'+ '.txt'
+    file_AUCs = 'output/result/AUCs--lr=1e-4,dropout=0.1,weight_decay=1e-4,kernel=7,n_layer=3,batch=64' + '.txt'
     file_model = 'output/model/' + 'lr=1e-4,dropout=0.1,weight_decay=1e-4,kernel=7,n_layer=3,batch=64'
     AUCs = ('Epoch\tTime(sec)\tLoss_train\tAUC_dev\tPRC_dev')
+    if not os.path.exists('output'):
+        os.makedirs('ouput')
+    if not os.path.exists('output/result'):
+        os.makedirs('output/result')
+    if not os.path.exists('output/model'):
+        os.makedirs('output/model')
+
     with open(file_AUCs, 'w') as f:
         f.write(AUCs + '\n')
 
@@ -91,7 +100,6 @@ if __name__ == "__main__":
     print('Training...')
     print(AUCs)
     start = timeit.default_timer()
-
     max_AUC_dev = 0
     for epoch in range(1, iteration+1):
         if epoch % decay_interval == 0:
