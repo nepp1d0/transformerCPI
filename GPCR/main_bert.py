@@ -10,11 +10,11 @@ import numpy as np
 import random
 import os
 import time
-from model import *
 import timeit
 import warnings
 
-
+from model_bert import BERT
+from model_bert import Trainer
 
 def load_tensor(file_name, dtype):
     return [dtype(d).to(device) for d in np.load(file_name + '.npy', allow_pickle=True)]
@@ -47,14 +47,13 @@ if __name__ == "__main__":
         print('The code uses CPU!!!')
 
     """Load preprocessed data."""
-    dir_input = ('dataset/' + DATASET + '/word2vec_30/')
-    compounds = load_tensor(dir_input + 'compounds', torch.FloatTensor)
-    adjacencies = load_tensor(dir_input + 'adjacencies', torch.FloatTensor)
-    proteins = load_tensor(dir_input + 'proteins', torch.FloatTensor)
-    interactions = load_tensor(dir_input + 'interactions', torch.LongTensor)
-
+    dir_input = ('tokenizer_directory/' )
+    smiles = load_tensor(dir_input + 'smiles', torch.FloatTensor)
+    targets = load_tensor(dir_input + 'targets', torch.FloatTensor)
+    labels = load_tensor(dir_input + 'labels', torch.FloatTensor)
+    print(labels)
     """Create a dataset and split it into train/dev/test."""
-    dataset = list(zip(compounds, adjacencies, proteins, interactions))
+    dataset = list(zip(smiles, targets, labels))
     dataset = shuffle_dataset(dataset, 1234)
     dataset_train, dataset_dev = split_dataset(dataset, 0.8)
 
@@ -74,17 +73,16 @@ if __name__ == "__main__":
     iteration = 300
     kernel_size = 7
 
-    encoder = Encoder(protein_dim, hid_dim, n_layers, kernel_size, dropout, device)
-    decoder = Decoder(atom_dim, hid_dim, n_layers, n_heads, pf_dim, DecoderLayer, SelfAttention, PositionwiseFeedforward, dropout, device)
-    model = Predictor(encoder, decoder, device)
+    print("Building BERT model")
+    model = BERT(70, hidden=hid_dim, n_layers=n_layers, attn_heads=n_heads)
     # model.load_state_dict(torch.load("output/model/lr=0.001,dropout=0.1,lr_decay=0.5"))
     model.to(device)
     trainer = Trainer(model, lr, weight_decay, batch)
-    tester = Tester(model)
+    #tester = Tester(model)
 
     """Output files."""
-    file_AUCs = 'output_bert/result/AUCs--lr=1e-4,dropout=0.1,weight_decay=1e-4,kernel=7,n_layer=3,batch=64' + '.txt'
-    file_model = 'output_bert/model/' + 'lr=1e-4,dropout=0.1,weight_decay=1e-4,kernel=7,n_layer=3,batch=64'
+    file_AUCs = 'output_bert/result/bertv1' + '.txt'
+    file_model = 'output_bert/model/' + 'bertv1'
     AUCs = ('Epoch\tTime(sec)\tLoss_train\tAUC_dev\tPRC_dev')
     if not os.path.exists('output_bert'):
         os.makedirs('output_bert')
@@ -106,15 +104,16 @@ if __name__ == "__main__":
             trainer.optimizer.param_groups[0]['lr'] *= lr_decay
 
         loss_train = trainer.train(dataset_train, device)
-        AUC_dev, PRC_dev = tester.test(dataset_dev)
+        #AUC_dev, PRC_dev = tester.test(dataset_dev)
 
         end = timeit.default_timer()
         time = end - start
 
-        AUCs = [epoch, time, loss_train, AUC_dev,PRC_dev]
-        tester.save_AUCs(AUCs, file_AUCs)
-        if AUC_dev > max_AUC_dev:
+        #tester.save_AUCs(AUCs, file_AUCs)
+        AUCs = [epoch, time, loss_train]
+
+        '''if AUC_dev > max_AUC_dev:
             tester.save_model(model, file_model)
             max_AUC_dev = AUC_dev
-        print('\t'.join(map(str, AUCs)))
+        print('\t'.join(map(str, AUCs)))'''
 
