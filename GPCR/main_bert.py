@@ -51,15 +51,18 @@ if __name__ == "__main__":
     smiles = load_tensor(dir_input + 'smiles', torch.FloatTensor)
     targets = load_tensor(dir_input + 'targets', torch.FloatTensor)
     labels = load_tensor(dir_input + 'labels', torch.FloatTensor)
-    print(labels)
+
+    print(f'Shape of smiles loaded tensors {smiles[0].shape}')
+    print(f'Shape of smiles masks loaded tensors {smiles[1].shape}')
+
     """Create a dataset and split it into train/dev/test."""
-    dataset = list(zip(smiles, targets, labels))
+    dataset = list(zip(smiles[0], smiles[1], targets[0], targets[1], labels))
     dataset = shuffle_dataset(dataset, 1234)
     dataset_train, dataset_dev = split_dataset(dataset, 0.8)
 
     """ create model ,trainer and tester """
     protein_dim = 100
-    atom_dim = 34
+    atom_dim = 100
     hid_dim = 64
     n_layers = 3
     n_heads = 8
@@ -74,7 +77,7 @@ if __name__ == "__main__":
     kernel_size = 7
 
     print("Building BERT model")
-    model = BERT(70, hidden=hid_dim, n_layers=n_layers, attn_heads=n_heads)
+    model = BERT(70 - 5, hidden=hid_dim, n_layers=n_layers, attn_heads=n_heads)  # 70 (smiles_vocab_size + targets_vocab_size) - 5 (special_tokens not repeated)
     # model.load_state_dict(torch.load("output/model/lr=0.001,dropout=0.1,lr_decay=0.5"))
     model.to(device)
     trainer = Trainer(model, lr, weight_decay, batch)

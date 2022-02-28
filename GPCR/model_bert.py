@@ -52,17 +52,37 @@ class BERT(nn.Module):
         self.transformer_blocks = nn.ModuleList(
             [TransformerBlock(hidden, attn_heads, hidden * 4, dropout) for _ in range(n_layers)])
 
-    def forward(self, x, segment_info):
+    def forward(self, x):
+        # x = torch.Tensor(
         # attention masking for padded token
         # torch.ByteTensor([batch_size, 1, seq_len, seq_len)
-        mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
+        #print("Length of input packed: ",torch.FloatTensor(x).shape)
+        #mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
 
         # embedding the indexed sequence to sequence of vectors
-        x = self.embedding(x, segment_info)
+        #print(torch.FloatTensor(x[0]).shape)
+
+        print('Len x is: ', len(x))
+        print('Type x[0] is: ', type(x[0]))
+        print('Len x[0] is: ', len(x[0]))
+        print('Type x[0][0] is: ', type(x[0][0]))
+        print('shape  of x[0][0] is ', x[0][0].shape)
+
+        # Comcatenate smiles and target sequence
+        input_seq = torch.cat((x[0], x[2]))
+        #torch.cat(x, out=)
+        # Concatenate masks of smiles and target
+        input_masks = torch.cat((x[1], x[3]))
+
+        # Casting to match nn.Embedding requirements
+        x_in = torch.tensor(input_seq).to(torch.int64)
+        x = self.embedding(x_in)
 
         # running over multiple transformer blocks
         for transformer in self.transformer_blocks:
-            x = transformer.forward(x, mask)
+            print(f'Feeding transformers layers with input of size {x.size()} and masks of {input_masks.size()}')
+            #  x = torch.Tensor([input_seq_len, hidden_dim, ])
+            x = transformer.forward(x, input_masks)
 
         return x
 
@@ -83,7 +103,7 @@ def pack(smiles, targets, labels, device):
         if target.shape[0] >= targets_len:
             targets_len = target.shape[0]
 
-    smiles_new = torch.zeros((N, smiles_len, 34), device=device)
+    smiles_new = torch.zeros((N, smiles_len, 100), device=device)
     i = 0
     for smile in smiles:
         a_len = smile.shape[0]
@@ -134,22 +154,38 @@ class Trainer(object):
         loss_total = 0
         i = 0
         self.optimizer.zero_grad()
-        smiles, targets, labels= [], [], []
+        smiles, smiles_masks, targets, targets_masks, labels = torch.LongTensor(device=device), torch.LongTensor(device=device), torch.LongTensor(device=device), torch.LongTensor(device=device), torch.LongTensor(device=device)
         for data in dataset:
             i = i+1
-            smile, target, label = data
-            #print(f'Processing protein of shape: {protein.shape}')
-            smiles.append(smile)
-            targets.append(target)
-            labels.append(label)
+            smile, smile_mask, target, target_mask, label = data
+            if smiles.size() == torch.Size([0]):
+                smiles = torch.cat((smiles, smile))
+            else:
+                smiles = torch.vstack((smiles, smile))
+
+            if smiles_masks.size() == torch.Size([0]):
+                smiles_masks = torch.cat((smiles_masks, smile_mask))
+            else:
+                smiles_masks = torch.vstack((smiles_masks, smile_mask))
+
+            if targets.size() == torch.Size([0]):
+                targets = torch.cat((targets, target))
+            else:
+                targets = torch.vstack((targets, target))
+
+            if targets_masks.size() == torch.Size([0]):
+                targets_masks = torch.cat((targets_masks, target_mask))
+            else:
+                targets_masks = torch.vstack((targets_masks, target_mask))
+
             if i % 8 == 0 or i == N:
-                data_pack = pack(smiles, targets, labels, device)
-                print(f'Proteins in data pack have shape: {data_pack[1].shape}')
-                loss = self.model(data_pack)
+                #data_pack = pack(smiles, smiles_mask, targets, targets_mask, labels, device)
+                #print(f'Proteins in data pack have shape: {data_pack[1].shape}')
+                loss = self.model((smiles, smiles_masks, targets, targets_masks, labels))
                 # loss = loss / self.batch
                 loss.backward()
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=10)
-                smiles, targets, labels= [], [], []
+                smiles, smiles_masks, targets, targets_masks, labels = torch.LongTensor(device=device), torch.LongTensor(device=device), torch.LongTensor(device=device), torch.LongTensor(device=device), torch.LongTensor(device=device)
             else:
                 continue
             if i % self.batch == 0 or i == N:

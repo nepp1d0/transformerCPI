@@ -86,10 +86,13 @@ class Tokenizer(object):
         token_list: list of ids
         """
         token_list = list()
+        masks_list = list()
+
         for sentence in sentences:
             arr = [self.word_dict[s] for s in sentence]
             token_list.append(arr)
-        return token_list
+            masks_list.append(self.get_attn_pad_mask(arr))
+        return token_list, masks_list
 
     def pre_tokenize(self, sentences):
         """
@@ -109,7 +112,7 @@ class Tokenizer(object):
             arr = [self.cls_token] + [s for s in sentence.split(' ')]
             if self.max_len:
                 if len(arr) < self.max_len:
-                    pads =  [self.pad_token] * (self.max_len - len(arr) - 1)
+                    pads = [self.pad_token] * (self.max_len - len(arr) - 1)
                     arr = arr + pads
                 else:
                     # Truncate
@@ -117,3 +120,12 @@ class Tokenizer(object):
             arr = arr + [self.sep_token]
             token_list.append(arr)
         return token_list
+
+    def get_attn_pad_mask(self, seq):
+        '''
+        source: https://colab.research.google.com/drive/13FjI_uXaw8JJGjzjVX3qKSLyW9p3b6OV?usp=sharing#scrollTo=s1PGksqBNuZM
+        '''
+        #mask = [0] * len(seq)
+        # 1 is PAD token
+        pad_attn_mask = [0 if e == 1 else 1 for e in seq]  # batch_size x 1 x len_k(=len_q), zero is masking padding tokens
+        return pad_attn_mask

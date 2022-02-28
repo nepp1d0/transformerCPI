@@ -1,6 +1,6 @@
 import torch.nn as nn
 from .single import Attention
-
+import torch
 
 class MultiHeadedAttention(nn.Module):
     """
@@ -23,11 +23,15 @@ class MultiHeadedAttention(nn.Module):
 
     def forward(self, query, key, value, mask=None):
         batch_size = query.size(0)
+        print(f'Query key value has dimensions {query.size()} {key.size()} {value.size()}')
 
         # 1) Do all the linear projections in batch from d_model => h x d_k
         query, key, value = [l(x).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
                              for l, x in zip(self.linear_layers, (query, key, value))]
-
+        print(f'Query key value has dimensions {query.size()} {key.size()} {value.size()}')
+        print(f'Mask has dimensions {mask.size()}')
+        mask = torch.unsqueeze(mask, 1).expand(16, 8, 100)
+        print(f'Mask has dimensions {mask.size()}')
         # 2) Apply attention on all the projected vectors in batch.
         x, attn = self.attention(query, key, value, mask=mask, dropout=self.dropout)
 
