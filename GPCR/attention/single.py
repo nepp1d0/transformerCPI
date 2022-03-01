@@ -16,6 +16,7 @@ class Attention(nn.Module):
 
         print(f'Size of scores is {scores.size()}')
         if mask is not None:
+            mask = torch.unsqueeze(mask, 3).expand(scores.shape)
             scores = scores.masked_fill(mask == 0, -1e9)
 
         p_attn = F.softmax(scores, dim=-1)

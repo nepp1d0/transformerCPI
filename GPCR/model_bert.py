@@ -182,6 +182,7 @@ class Trainer(object):
                 #data_pack = pack(smiles, smiles_mask, targets, targets_mask, labels, device)
                 #print(f'Proteins in data pack have shape: {data_pack[1].shape}')
                 loss = self.model((smiles, smiles_masks, targets, targets_masks, labels))
+                print(f'Loss is {loss.shape}')
                 # loss = loss / self.batch
                 loss.backward()
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=10)
