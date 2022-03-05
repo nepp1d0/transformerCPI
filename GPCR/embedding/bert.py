@@ -11,7 +11,7 @@ class BERTEmbedding(nn.Module):
         2. PositionalEmbedding : adding positional information using sin, cos
         2. SegmentEmbedding : adding sentence segment info, (sent_A:1, sent_B:2)
         sum of all these features are output of BERTEmbedding
-    In our application we only use TokenEmbedding since samples are i.i.d.
+    In our application we only use TokenEmbedding since samples are single sequences  i.i.d.
     """
 
     def __init__(self, vocab_size, embed_size, dropout=0.1):

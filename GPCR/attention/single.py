@@ -14,7 +14,6 @@ class Attention(nn.Module):
         scores = torch.matmul(query, key.transpose(-2, -1)) \
                  / math.sqrt(query.size(-1))
 
-        print(f'Size of scores is {scores.size()}')
         if mask is not None:
             mask = torch.unsqueeze(mask, 3).expand(scores.shape)
             scores = scores.masked_fill(mask == 0, -1e9)

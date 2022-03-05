@@ -20,7 +20,7 @@ import torch.nn as nn
 
 from transformers import TransformerBlock
 from embedding.bert import BERTEmbedding
-
+from classification_head import ClassificationHead
 
 class BERT(nn.Module):
     """
@@ -52,6 +52,9 @@ class BERT(nn.Module):
         self.transformer_blocks = nn.ModuleList(
             [TransformerBlock(hidden, attn_heads, hidden * 4, dropout) for _ in range(n_layers)])
 
+        self.cls_head = ClassificationHead(batch_size=8, hidden_size=self.hidden)
+
+
     def forward(self, x):
         # x = torch.Tensor(
         # attention masking for padded token
@@ -62,17 +65,12 @@ class BERT(nn.Module):
         # embedding the indexed sequence to sequence of vectors
         #print(torch.FloatTensor(x[0]).shape)
 
-        print('Len x is: ', len(x))
-        print('Type x[0] is: ', type(x[0]))
-        print('Len x[0] is: ', len(x[0]))
-        print('Type x[0][0] is: ', type(x[0][0]))
-        print('shape  of x[0][0] is ', x[0][0].shape)
-
         # Comcatenate smiles and target sequence
-        input_seq = torch.cat((x[0], x[2]))
+        input_seq = torch.cat((x[0], x[2]), dim=1)
+        #print(f'input_seq shape is: {input_seq.size()}')
         #torch.cat(x, out=)
         # Concatenate masks of smiles and target
-        input_masks = torch.cat((x[1], x[3]))
+        input_masks = torch.cat((x[1], x[3]), dim=1)
 
         # Casting to match nn.Embedding requirements
         x_in = torch.tensor(input_seq).to(torch.int64)
@@ -80,10 +78,11 @@ class BERT(nn.Module):
 
         # running over multiple transformer blocks
         for transformer in self.transformer_blocks:
-            print(f'Feeding transformers layers with input of size {x.size()} and masks of {input_masks.size()}')
+            #print(f'Feeding transformers layers with input of size {x.size()} and masks of {input_masks.size()}')
             #  x = torch.Tensor([input_seq_len, hidden_dim, ])
             x = transformer.forward(x, input_masks)
-
+        #print(f"Output of bert for loss is : {x.shape}")
+        x = self.cls_head(x)
         return x
 
 def pack(smiles, targets, labels, device):
@@ -181,8 +180,8 @@ class Trainer(object):
             if i % 8 == 0 or i == N:
                 #data_pack = pack(smiles, smiles_mask, targets, targets_mask, labels, device)
                 #print(f'Proteins in data pack have shape: {data_pack[1].shape}')
-                loss = self.model((smiles, smiles_masks, targets, targets_masks, labels))
-                print(f'Loss is {loss.shape}')
+                pred = self.model((smiles, smiles_masks, targets, targets_masks, labels))
+                loss = torch.nn.functional.mse_loss(pred, label)
                 # loss = loss / self.batch
                 loss.backward()
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=10)

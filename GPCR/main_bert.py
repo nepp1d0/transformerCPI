@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
         #tester.save_AUCs(AUCs, file_AUCs)
         AUCs = [epoch, time, loss_train]
-
+        print('\t'.join(map(str, AUCs)))
         '''if AUC_dev > max_AUC_dev:
             tester.save_model(model, file_model)
             max_AUC_dev = AUC_dev
